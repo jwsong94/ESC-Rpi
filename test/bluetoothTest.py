@@ -2,7 +2,8 @@
 
 import bluetooth
 
-bd_addr = "98:D3:31:F7:22:63";
+#bd_addr = "98:D3:31:F7:22:63";
+bd_addr = "98:D3:31:F5:2C:9F";
 #bd_addr = "98:D3:31:F5:2D:8E";
 port = 1;
 
