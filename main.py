@@ -28,7 +28,9 @@ for ble_mac in ble_list:
         print("Try To connect : " + ble_mac);
         if ble_mac in dev_list:
             conn = btle.Peripheral(ble_mac);
-            conn_list.append(conn);
+            #conn_list.append(conn);
+            ch = conn.getCharacteristics(uuid=cont_uuid)[0];
+            conn_list.append(ch);
         else:
             conn_list.append(None);
     except btle.BTLEException as ex:
@@ -41,11 +43,46 @@ for ble_mac in ble_list:
         conn_list.append(1);
     '''
 
+'''
 for conn_val in conn_list:
     if conn_val != None:
         ch = conn_val.getCharacteristics(uuid=cont_uuid)[0];
         ch.write("1".encode('utf-8'));
+'''
 
+play = True;
+
+while play:
+    print("***************************");
+    print("*      ESC Controller     *");
+    print("***************************");
+    print("*  1 : Status             *");
+    print("*  2 : Go(Send 1)         *");
+    print("*  3 : Stop(Send 0)       *");
+    print("*  4 : Finish             *");
+    print("***************************");
+    i = input("* Commend : ");
+
+    if i == '1':
+        for i in (0, 1, 2, 3):
+            if conn_list[i] != None:
+                print(ble_list[i] + " : On");
+            else:
+                print(ble_list[i] + " : Off");
+    elif i == '2':
+        for conn_val in conn_list:
+            if conn_val != None:
+                #ch = conn_val.getCharacteristics(uuid=cont_uuid)[0];
+                #ch.write("1".encode('utf-8'));
+                conn_val.write("1".encode('utf-8'));
+    elif i == '3':
+        for conn_val in conn_list:
+            if conn_val != None:
+                #ch = conn_val.getCharacteristics(uuid=cont_uuid)[0];
+                #ch.write("0".encode('utf-8'));
+                conn_val.write("0".encode('utf-8'));
+    elif i == '4':
+        play = False;
 '''
 print ("Connecting...");
 #dev = btle.Peripheral("F4:5E:AB:B1:0C:4A")
