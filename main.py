@@ -1,101 +1,215 @@
+# ESC
+# Author : Hery Kim, Soyoung Ko, Jungwoo Song
+# Contact Us : jwsong417@gmail.com
+
+# FOR BLE
 from bluepy import btle
 
-# BLUNO MAC TABLE
-# ESC_HR : F4:5E:AB:B1:0C:06
-# ESC_SY : F4:5E:AB:B0:8B:70
-# ESC_JW : F4:5E:AB:B0:8C:A3
-# ESC_MH : F4:5E:AB:B1:0C:4A
+# FOR GPIO
+import RPi.GPIO as GPIO
+from time import sleep
 
-ble_list = ['f4:5e:ab:b1:0c:06', 'f4:5e:ab:b0:8b:70', 'f4:5e:ab:b0:8c:a3', 'f4:5e:ab:b1:0c:4a'];
+class ESC_BLE:
+    def __init__(self):
+        print("ESC_BLE Init");
+        self.ble_list = ['f4:5e:ab:b1:0c:06', 'f4:5e:ab:b0:8b:70', 'f4:5e:ab:b0:8c:a3', 'f4:5e:ab:b1:0c:4a'];
+        self.dev_list = [];
+        self.conn_list = [];
+        self.cont_uuid = '0000dfb1-0000-1000-8000-00805f9b34fb';
+        #self.ble_scan();
 
-dev_list = [];
-conn_list = [];
+    def ble_scan(self):
+        self.dev_list = [];
+        self.conn_list = [];
+        scan = btle.Scanner();
+        print("Scanning for 5 seconds");
+        devs = scan.scan(5);
 
-cont_uuid = '0000dfb1-0000-1000-8000-00805f9b34fb';
+        for dev in devs:
+            self.dev_list.append(dev.addr);
 
-scan = btle.Scanner();
-print("Scanning for 5 seconds");
-devs = scan.scan(5);
+        for dev in self.dev_list:
+            print(dev);
 
-for dev in devs:
-    dev_list.append(dev.addr);
+        for ble_mac in self.ble_list:
+            try:
+                print("Try To connect : " + ble_mac);
+                if ble_mac in self.dev_list:
+                    conn = btle.Peripheral(ble_mac);
+                    #conn_list.append(conn);
+                    ch = conn.getCharacteristics(uuid=self.cont_uuid)[0];
+                    self.conn_list.append(ch);
+                else:
+                    self.conn_list.append(None);
+            except btle.BTLEException as ex:
+                self.conn_list.append(None);
 
-for dev in dev_list:
-    print(dev);
-
-for ble_mac in ble_list:
-    try:
-        print("Try To connect : " + ble_mac);
-        if ble_mac in dev_list:
-            conn = btle.Peripheral(ble_mac);
-            #conn_list.append(conn);
-            ch = conn.getCharacteristics(uuid=cont_uuid)[0];
-            conn_list.append(ch);
-        else:
-            conn_list.append(None);
-    except btle.BTLEException as ex:
-        conn_list.append(None);
-
-    '''
-    if ble_mac is None:
-        conn_list.append(0);
-    else:
-        conn_list.append(1);
-    '''
-
-'''
-for conn_val in conn_list:
-    if conn_val != None:
-        ch = conn_val.getCharacteristics(uuid=cont_uuid)[0];
-        ch.write("1".encode('utf-8'));
-'''
-
-play = True;
-
-while play:
-    print("***************************");
-    print("*      ESC Controller     *");
-    print("***************************");
-    print("*  1 : Status             *");
-    print("*  2 : Go(Send 1)         *");
-    print("*  3 : Stop(Send 0)       *");
-    print("*  4 : Finish             *");
-    print("***************************");
-    i = input("* Commend : ");
-
-    if i == '1':
+    def ble_status(self):
         for i in (0, 1, 2, 3):
-            if conn_list[i] != None:
-                print(ble_list[i] + " : On");
+            if self.conn_list[i] != None:
+                print(self.ble_list[i] + " : On");
             else:
-                print(ble_list[i] + " : Off");
-    elif i == '2':
-        for conn_val in conn_list:
+                print(self.ble_list[i] + " : Off");
+
+    def ble_broadcast(self, data):
+        for conn_val in self.conn_list:
+            print("send : " + data);
             if conn_val != None:
-                #ch = conn_val.getCharacteristics(uuid=cont_uuid)[0];
-                #ch.write("1".encode('utf-8'));
-                conn_val.write("1".encode('utf-8'));
-    elif i == '3':
-        for conn_val in conn_list:
-            if conn_val != None:
-                #ch = conn_val.getCharacteristics(uuid=cont_uuid)[0];
-                #ch.write("0".encode('utf-8'));
-                conn_val.write("0".encode('utf-8'));
-    elif i == '4':
-        play = False;
-'''
-print ("Connecting...");
-#dev = btle.Peripheral("F4:5E:AB:B1:0C:4A")
-dev = btle.Peripheral("F4:5E:AB:B0:8B:70");
+                conn_val.write(data.encode('utf-8'));
 
-print ("Services...");
-for svc in dev.services:
-    print (str(svc));
+class ESC_GPIO:
+    def __init__(self):
+        print("ESC_GPIO Init");
+        GPIO.setmode(GPIO.BCM);
 
-print ("Characteristics...");
-for ch in dev.getCharacteristics():
-    print ("  0x"+ format(ch.getHandle(),'02X')  +"   "+str(ch.uuid) +" " + ch.propertiesToString());
+        self.OSCIL_SENSOR = 5
+        self.FLAME_SENSOR = 6
+        self.SMOKE_SENSOR = 13
 
-ch = dev.getCharacteristics(uuid='0000dfb1-0000-1000-8000-00805f9b34fb')[0];
-ch.write("1".encode('utf-8'))
-'''
+        GPIO.setup(self.OSCIL_SENSOR, GPIO.IN, GPIO.PUD_DOWN)
+        GPIO.setup(self.FLAME_SENSOR, GPIO.IN, GPIO.PUD_DOWN)
+        GPIO.setup(self.SMOKE_SENSOR, GPIO.IN, GPIO.PUD_DOWN)
+
+        self.oscil_stat = 1;
+        self.flame_stat = 1;
+        self.smoke_stat = 1;
+
+    # Normal : 1 / Oscil : 0
+    def CheckOscillation(self) :
+        self.oscil_stat = GPIO.input(self.OSCIL_SENSOR)
+
+    # Normal : 1 / Flame : 0
+    def CheckFlame(self) :
+        self.flame_stat = GPIO.input(self.FLAME_SENSOR)
+
+    # Normal : 1 / Smoke : 0
+    def CheckSmoke(self) :
+        self.smoke_stat = GPIO.input(self.SMOKE_SENSOR)
+
+
+class ESC_UI(object):
+    def __init__(self):
+        print("ESC_UI Init");
+        self.esc_gpio = ESC_GPIO();
+        self.esc_ble = ESC_BLE();
+
+    def setupUi(self, Frame):
+        Frame.setObjectName("Frame")
+        Frame.resize(400, 300)
+        self.MView = QtWidgets.QGraphicsView(Frame)
+        self.MView.setGeometry(QtCore.QRect(10, 10, 281, 281))
+        self.MView.setObjectName("MView")
+        self.SLabel = QtWidgets.QLabel(Frame)
+        self.SLabel.setGeometry(QtCore.QRect(310, 170, 59, 16))
+        self.SLabel.setAlignment(QtCore.Qt.AlignCenter)
+        self.SLabel.setObjectName("SLabel")
+        self.BButton = QtWidgets.QPushButton(Frame)
+        self.BButton.setGeometry(QtCore.QRect(300, 10, 91, 31))
+        self.BButton.setObjectName("BButton")
+        self.BLabel = QtWidgets.QLabel(Frame)
+        self.BLabel.setGeometry(QtCore.QRect(310, 40, 61, 16))
+        self.BLabel.setAlignment(QtCore.Qt.AlignCenter)
+        self.BLabel.setObjectName("BLabel")
+        self.formLayoutWidget = QtWidgets.QWidget(Frame)
+        self.formLayoutWidget.setGeometry(QtCore.QRect(300, 60, 91, 101))
+        self.formLayoutWidget.setObjectName("formLayoutWidget")
+        self.BLETable = QtWidgets.QFormLayout(self.formLayoutWidget)
+        self.BLETable.setLabelAlignment(QtCore.Qt.AlignCenter)
+        self.BLETable.setFormAlignment(QtCore.Qt.AlignCenter)
+        self.BLETable.setContentsMargins(0, 0, 0, 0)
+        self.BLETable.setObjectName("BLETable")
+        self.BLE1 = QtWidgets.QLabel(self.formLayoutWidget)
+        self.BLE1.setObjectName("BLE1")
+        self.BLETable.setWidget(0, QtWidgets.QFormLayout.LabelRole, self.BLE1)
+        self.BLE1S = QtWidgets.QLabel(self.formLayoutWidget)
+        self.BLE1S.setStyleSheet("background-color: red;")
+        self.BLE1S.setFrameShadow(QtWidgets.QFrame.Plain)
+        self.BLE1S.setObjectName("BLE1S")
+        self.BLETable.setWidget(0, QtWidgets.QFormLayout.FieldRole, self.BLE1S)
+        self.BLE2 = QtWidgets.QLabel(self.formLayoutWidget)
+        self.BLE2.setObjectName("BLE2")
+        self.BLETable.setWidget(1, QtWidgets.QFormLayout.LabelRole, self.BLE2)
+        self.BLE2S = QtWidgets.QLabel(self.formLayoutWidget)
+        self.BLE2S.setStyleSheet("background-color: red;")
+        self.BLE2S.setObjectName("BLE2S")
+        self.BLETable.setWidget(1, QtWidgets.QFormLayout.FieldRole, self.BLE2S)
+        self.BLE3 = QtWidgets.QLabel(self.formLayoutWidget)
+        self.BLE3.setObjectName("BLE3")
+        self.BLETable.setWidget(2, QtWidgets.QFormLayout.LabelRole, self.BLE3)
+        self.BLE3S = QtWidgets.QLabel(self.formLayoutWidget)
+        self.BLE3S.setStyleSheet("background-color: green;")
+        self.BLE3S.setObjectName("BLE3S")
+        self.BLETable.setWidget(2, QtWidgets.QFormLayout.FieldRole, self.BLE3S)
+        self.BLE4 = QtWidgets.QLabel(self.formLayoutWidget)
+        self.BLE4.setObjectName("BLE4")
+        self.BLETable.setWidget(3, QtWidgets.QFormLayout.LabelRole, self.BLE4)
+        self.BLE4S = QtWidgets.QLabel(self.formLayoutWidget)
+        self.BLE4S.setStyleSheet("background-color: green;")
+        self.BLE4S.setObjectName("BLE4S")
+        self.BLETable.setWidget(3, QtWidgets.QFormLayout.FieldRole, self.BLE4S)
+        self.formLayoutWidget_2 = QtWidgets.QWidget(Frame)
+        self.formLayoutWidget_2.setGeometry(QtCore.QRect(300, 190, 91, 71))
+        self.formLayoutWidget_2.setObjectName("formLayoutWidget_2")
+        self.formLayout = QtWidgets.QFormLayout(self.formLayoutWidget_2)
+        self.formLayout.setLabelAlignment(QtCore.Qt.AlignCenter)
+        self.formLayout.setFormAlignment(QtCore.Qt.AlignCenter)
+        self.formLayout.setContentsMargins(0, 0, 0, 0)
+        self.formLayout.setObjectName("formLayout")
+        self.Flame = QtWidgets.QLabel(self.formLayoutWidget_2)
+        self.Flame.setObjectName("Flame")
+        self.formLayout.setWidget(0, QtWidgets.QFormLayout.LabelRole, self.Flame)
+        self.FlameS = QtWidgets.QLabel(self.formLayoutWidget_2)
+        self.FlameS.setStyleSheet("background-color: green;")
+        self.FlameS.setObjectName("FlameS")
+        self.formLayout.setWidget(0, QtWidgets.QFormLayout.FieldRole, self.FlameS)
+        self.Gas = QtWidgets.QLabel(self.formLayoutWidget_2)
+        self.Gas.setObjectName("Gas")
+        self.formLayout.setWidget(1, QtWidgets.QFormLayout.LabelRole, self.Gas)
+        self.GasS = QtWidgets.QLabel(self.formLayoutWidget_2)
+        self.GasS.setStyleSheet("background-color: green;")
+        self.GasS.setObjectName("GasS")
+        self.formLayout.setWidget(1, QtWidgets.QFormLayout.FieldRole, self.GasS)
+        self.Vib = QtWidgets.QLabel(self.formLayoutWidget_2)
+        self.Vib.setObjectName("Vib")
+        self.formLayout.setWidget(2, QtWidgets.QFormLayout.LabelRole, self.Vib)
+        self.VibS = QtWidgets.QLabel(self.formLayoutWidget_2)
+        self.VibS.setStyleSheet("background-color: green;")
+        self.VibS.setObjectName("VibS")
+        self.formLayout.setWidget(2, QtWidgets.QFormLayout.FieldRole, self.VibS)
+        self.pushButton = QtWidgets.QPushButton(Frame)
+        self.pushButton.setGeometry(QtCore.QRect(300, 260, 91, 32))
+        self.pushButton.setObjectName("pushButton")
+
+        self.retranslateUi(Frame)
+        QtCore.QMetaObject.connectSlotsByName(Frame)
+
+    def retranslateUi(self, Frame):
+        _translate = QtCore.QCoreApplication.translate
+        Frame.setWindowTitle(_translate("Frame", "Frame"))
+        self.SLabel.setText(_translate("Frame", "Sensors"))
+        self.BButton.setText(_translate("Frame", "Refresh"))
+        self.BLabel.setText(_translate("Frame", "Conn Stat"))
+        self.BLE1.setText(_translate("Frame", "Patient1"))
+        self.BLE1S.setText(_translate("Frame", " "))
+        self.BLE2.setText(_translate("Frame", "Patient2"))
+        self.BLE2S.setText(_translate("Frame", " "))
+        self.BLE3.setText(_translate("Frame", "Patient3"))
+        self.BLE3S.setText(_translate("Frame", " "))
+        self.BLE4.setText(_translate("Frame", "Patient4"))
+        self.BLE4S.setText(_translate("Frame", " "))
+        self.Flame.setText(_translate("Frame", "Flame"))
+        self.FlameS.setText(_translate("Frame", " "))
+        self.Gas.setText(_translate("Frame", "Gas"))
+        self.GasS.setText(_translate("Frame", " "))
+        self.Vib.setText(_translate("Frame", "Vibration"))
+        self.VibS.setText(_translate("Frame", " "))
+        self.pushButton.setText(_translate("Frame", "Escape"))
+
+if __name__ == "__main__":
+    import sys
+    app = QtWidgets.QApplication(sys.argv)
+    Frame = QtWidgets.QFrame()
+    ui = ESC_UI()
+    ui.setupUi(Frame)
+    Frame.show()
+    sys.exit(app.exec_())
