@@ -9,6 +9,9 @@ from bluepy import btle
 import RPi.GPIO as GPIO
 from time import sleep
 
+# FOR UI
+from PyQt5 import QtCore, QtGui, QtWidgets
+
 class ESC_BLE:
     def __init__(self):
         print("ESC_BLE Init");
