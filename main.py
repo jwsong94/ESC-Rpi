@@ -14,6 +14,9 @@ from time import sleep
 # FOR UI
 from PyQt5 import QtCore, QtGui, QtWidgets
 
+# FOR TIMTER
+import threading
+
 class ESC_BLE:
     def __init__(self):
         print("ESC_BLE Init");
@@ -80,16 +83,23 @@ class ESC_GPIO:
         self.smoke_stat = 1;
 
     # Normal : 1 / Oscil : 0
-    def CheckOscillation(self) :
+    def check_oscillation(self) :
         self.oscil_stat = GPIO.input(self.OSCIL_SENSOR)
 
     # Normal : 1 / Flame : 0
-    def CheckFlame(self) :
+    def check_flame(self) :
         self.flame_stat = GPIO.input(self.FLAME_SENSOR)
 
     # Normal : 1 / Smoke : 0
-    def CheckSmoke(self) :
+    def check_smoke(self) :
         self.smoke_stat = GPIO.input(self.SMOKE_SENSOR)
+
+    def sensor_status(self) :
+        sensor_stat = [1, 1, 1];
+        self.check_oscillation();
+        self.check_flame();
+        self.check_smoke();
+        return sensor_stat;
 
 
 class ESC_UI(object):
@@ -101,7 +111,7 @@ class ESC_UI(object):
     def ble_refresh(self):
         self.esc_ble.ble_scan();
         ble_stat = self.esc_ble.ble_status();
-        print('Button Test');
+        #print('Button Test');
         print(ble_stat);
 
         if ble_stat[0] == 1:
@@ -123,9 +133,38 @@ class ESC_UI(object):
             self.BLE4S.setStyleSheet("background-color: green;")
         else:
             self.BLE4S.setStyleSheet("background-color: red;")
+
+        self.ble_go();
     
     def ble_go(self):
         self.esc_ble.ble_broadcast("1");
+
+    def ble_stop(self):
+        self.esc_ble.ble_broadcast("0");
+
+    def sensor_timer(self):
+        sensor_stat = self.esc_gpio.sensor_status();
+        print(sensor_stat);
+        
+        if sensor_stat[0] == 1:
+            self.VibS.setStyleSheet("background-color: green;")
+        else:
+            self.VibS.setStyleSheet("background-color: red;")
+        
+        if sensor_stat[1] == 1:
+            self.FlameS.setStyleSheet("background-color: green;")
+        else:
+            self.FlameS.setStyleSheet("background-color: red;")
+
+        if sensor_stat[2] == 1:
+            self.GasS.setStyleSheet("background-color: green;")
+        else:
+            self.GasS.setStyleSheet("background-color: red;")
+
+        if sensor_stat[0]*sensor_stat[1]*sensor_stat[2] == 0:
+            print("Warning!!!!");
+        
+        threading.Timer(1, self.sensor_timer).start();
 
     def setupUi(self, Frame):
         Frame.setObjectName("Frame")
@@ -171,14 +210,14 @@ class ESC_UI(object):
         self.BLE3.setObjectName("BLE3")
         self.BLETable.setWidget(2, QtWidgets.QFormLayout.LabelRole, self.BLE3)
         self.BLE3S = QtWidgets.QLabel(self.formLayoutWidget)
-        self.BLE3S.setStyleSheet("background-color: green;")
+        self.BLE3S.setStyleSheet("background-color: red;")
         self.BLE3S.setObjectName("BLE3S")
         self.BLETable.setWidget(2, QtWidgets.QFormLayout.FieldRole, self.BLE3S)
         self.BLE4 = QtWidgets.QLabel(self.formLayoutWidget)
         self.BLE4.setObjectName("BLE4")
         self.BLETable.setWidget(3, QtWidgets.QFormLayout.LabelRole, self.BLE4)
         self.BLE4S = QtWidgets.QLabel(self.formLayoutWidget)
-        self.BLE4S.setStyleSheet("background-color: green;")
+        self.BLE4S.setStyleSheet("background-color: red;")
         self.BLE4S.setObjectName("BLE4S")
         self.BLETable.setWidget(3, QtWidgets.QFormLayout.FieldRole, self.BLE4S)
         self.formLayoutWidget_2 = QtWidgets.QWidget(Frame)
@@ -215,7 +254,7 @@ class ESC_UI(object):
         self.SButton.setObjectName("SButton")
 
         self.BButton.clicked.connect(self.ble_refresh);
-        self.SButton.clicked.connect(self.ble_go);
+        self.SButton.clicked.connect(self.ble_stop);
         self.retranslateUi(Frame)
         QtCore.QMetaObject.connectSlotsByName(Frame)
 
@@ -224,7 +263,7 @@ class ESC_UI(object):
         Frame.setWindowTitle(_translate("Frame", "Frame"))
         self.SLabel.setText(_translate("Frame", "Sensors"))
         self.BButton.setText(_translate("Frame", "Refresh"))
-        self.BLabel.setText(_translate("Frame", "Conn Stat"))
+        self.BLabel.setText(_translate("Frame", "BLE Conn"))
         self.BLE1.setText(_translate("Frame", "Patient1"))
         self.BLE1S.setText(_translate("Frame", " "))
         self.BLE2.setText(_translate("Frame", "Patient2"))
@@ -237,9 +276,9 @@ class ESC_UI(object):
         self.FlameS.setText(_translate("Frame", " "))
         self.Gas.setText(_translate("Frame", "Gas"))
         self.GasS.setText(_translate("Frame", " "))
-        self.Vib.setText(_translate("Frame", "Vibration"))
+        self.Vib.setText(_translate("Frame", "Vibra"))
         self.VibS.setText(_translate("Frame", " "))
-        self.SButton.setText(_translate("Frame", "Escape"))
+        self.SButton.setText(_translate("Frame", "Stop"))
 
 if __name__ == "__main__":
     import sys
@@ -248,4 +287,5 @@ if __name__ == "__main__":
     ui = ESC_UI()
     ui.setupUi(Frame)
     Frame.show()
+    ui.sensor_timer();
     sys.exit(app.exec_())
