@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 # ESC
 # Author : Hery Kim, Soyoung Ko, Jungwoo Song
 # Contact Us : jwsong417@gmail.com
@@ -48,11 +50,11 @@ class ESC_BLE:
                 self.conn_list.append(None);
 
     def ble_status(self):
+        ble_stat = [0, 0, 0, 0];
         for i in (0, 1, 2, 3):
             if self.conn_list[i] != None:
-                print(self.ble_list[i] + " : On");
-            else:
-                print(self.ble_list[i] + " : Off");
+                ble_stat[i] = 1;
+        return ble_stat;
 
     def ble_broadcast(self, data):
         for conn_val in self.conn_list:
@@ -95,6 +97,35 @@ class ESC_UI(object):
         print("ESC_UI Init");
         self.esc_gpio = ESC_GPIO();
         self.esc_ble = ESC_BLE();
+
+    def ble_refresh(self):
+        self.esc_ble.ble_scan();
+        ble_stat = self.esc_ble.ble_status();
+        print('Button Test');
+        print(ble_stat);
+
+        if ble_stat[0] == 1:
+            self.BLE1S.setStyleSheet("background-color: green;")
+        else:
+            self.BLE1S.setStyleSheet("background-color: red;")
+            
+        if ble_stat[1] == 1:
+            self.BLE2S.setStyleSheet("background-color: green;")
+        else:
+            self.BLE2S.setStyleSheet("background-color: red;")
+
+        if ble_stat[2] == 1:
+            self.BLE3S.setStyleSheet("background-color: green;")
+        else:
+            self.BLE3S.setStyleSheet("background-color: red;")
+
+        if ble_stat[3] == 1:
+            self.BLE4S.setStyleSheet("background-color: green;")
+        else:
+            self.BLE4S.setStyleSheet("background-color: red;")
+    
+    def ble_go(self):
+        self.esc_ble.ble_broadcast("1");
 
     def setupUi(self, Frame):
         Frame.setObjectName("Frame")
@@ -179,10 +210,12 @@ class ESC_UI(object):
         self.VibS.setStyleSheet("background-color: green;")
         self.VibS.setObjectName("VibS")
         self.formLayout.setWidget(2, QtWidgets.QFormLayout.FieldRole, self.VibS)
-        self.pushButton = QtWidgets.QPushButton(Frame)
-        self.pushButton.setGeometry(QtCore.QRect(300, 260, 91, 32))
-        self.pushButton.setObjectName("pushButton")
+        self.SButton = QtWidgets.QPushButton(Frame)
+        self.SButton.setGeometry(QtCore.QRect(300, 260, 91, 32))
+        self.SButton.setObjectName("SButton")
 
+        self.BButton.clicked.connect(self.ble_refresh);
+        self.SButton.clicked.connect(self.ble_go);
         self.retranslateUi(Frame)
         QtCore.QMetaObject.connectSlotsByName(Frame)
 
@@ -206,7 +239,7 @@ class ESC_UI(object):
         self.GasS.setText(_translate("Frame", " "))
         self.Vib.setText(_translate("Frame", "Vibration"))
         self.VibS.setText(_translate("Frame", " "))
-        self.pushButton.setText(_translate("Frame", "Escape"))
+        self.SButton.setText(_translate("Frame", "Escape"))
 
 if __name__ == "__main__":
     import sys
