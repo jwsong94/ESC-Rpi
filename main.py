@@ -61,7 +61,7 @@ class ESC_BLE:
 
     def ble_broadcast(self, data):
         for conn_val in self.conn_list:
-            print("send : " + data);
+            #print("send : " + data);
             if conn_val != None:
                 conn_val.write(data.encode('utf-8'));
 
@@ -75,6 +75,7 @@ class ESC_GPIO:
         self.SMOKE_SENSOR = 13
         self.ESC_LED = 19
         self.ESC_BUTTON = 26
+        self.ESC_BUZZER = 16
 
         GPIO.setup(self.OSCIL_SENSOR, GPIO.IN, GPIO.PUD_DOWN)
         GPIO.setup(self.FLAME_SENSOR, GPIO.IN, GPIO.PUD_DOWN)
@@ -82,6 +83,10 @@ class ESC_GPIO:
         GPIO.setup(self.ESC_BUTTON, GPIO.IN, GPIO.PUD_DOWN)
 
         GPIO.setup(self.ESC_LED, GPIO.OUT, initial=GPIO.LOW)
+        GPIO.setup(self.ESC_BUZZER, GPIO.OUT)
+
+        self.buzzer = GPIO.PWM(self.ESC_BUZZER, 3000);
+        self.buzzer.start(0);
 
         self.oscil_stat = 1;
         self.flame_stat = 1;
@@ -110,7 +115,7 @@ class ESC_GPIO:
         self.check_smoke();
         self.check_button();
 
-        sensor_stat[0] = self.oscil_stat;
+        #sensor_stat[0] = self.oscil_stat;
         sensor_stat[1] = self.flame_stat;
         sensor_stat[2] = self.smoke_stat;
         sensor_stat[3] = self.button_stat;
@@ -123,6 +128,12 @@ class ESC_GPIO:
     def led_off(self) :
         GPIO.output(self.ESC_LED, GPIO.LOW);
 
+    def buzzer_on(self) :
+        self.buzzer.ChangeDutyCycle(90);
+
+    def buzzer_off(self) :
+        self.buzzer.ChangeDutyCycle(0);
+
 class ESC_UI(object):
     def __init__(self):
         print("ESC_UI Init");
@@ -133,7 +144,7 @@ class ESC_UI(object):
         self.esc_ble.ble_scan();
         ble_stat = self.esc_ble.ble_status();
         #print('Button Test');
-        print(ble_stat);
+        #print(ble_stat);
 
         if ble_stat[0] == 1:
             self.BLE1S.setStyleSheet("background-color: green;")
@@ -162,11 +173,11 @@ class ESC_UI(object):
 
     def ble_stop(self):
         self.esc_ble.ble_broadcast("0");
-        self.led_off();
+        self.esc_gpio.led_off();
 
     def sensor_timer(self):
         sensor_stat = self.esc_gpio.sensor_status();
-        print(sensor_stat);
+        #print(sensor_stat);
         
         if sensor_stat[0] == 1:
             self.VibS.setStyleSheet("background-color: green;")
@@ -185,10 +196,13 @@ class ESC_UI(object):
 
         if sensor_stat[0]*sensor_stat[1]*sensor_stat[2] == 0:
             print("Warning!!!!");
+            self.esc_gpio.buzzer_on();
             if sensor_stat[3] == 1:
-                self.led_on();
+                self.esc_gpio.led_on();
+        else:
+            self.esc_gpio.buzzer_off();
         
-        threading.Timer(1, self.sensor_timer).start();
+        threading.Timer(0.25, self.sensor_timer).start();
 
     def setupUi(self, Frame):
         Frame.setObjectName("Frame")
