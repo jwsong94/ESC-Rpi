@@ -73,14 +73,20 @@ class ESC_GPIO:
         self.OSCIL_SENSOR = 5
         self.FLAME_SENSOR = 6
         self.SMOKE_SENSOR = 13
+        self.ESC_LED = 19
+        self.ESC_BUTTON = 26
 
         GPIO.setup(self.OSCIL_SENSOR, GPIO.IN, GPIO.PUD_DOWN)
         GPIO.setup(self.FLAME_SENSOR, GPIO.IN, GPIO.PUD_DOWN)
         GPIO.setup(self.SMOKE_SENSOR, GPIO.IN, GPIO.PUD_DOWN)
+        GPIO.setup(self.ESC_BUTTON, GPIO.IN, GPIO.PUD_DOWN)
+
+        GPIO.setup(self.ESC_LED, GPIO.OUT, initial=GPIO.LOW)
 
         self.oscil_stat = 1;
         self.flame_stat = 1;
         self.smoke_stat = 1;
+        self.button_stat = 0;
 
     # Normal : 1 / Oscil : 0
     def check_oscillation(self) :
@@ -94,13 +100,28 @@ class ESC_GPIO:
     def check_smoke(self) :
         self.smoke_stat = GPIO.input(self.SMOKE_SENSOR)
 
+    def check_button(self) :
+        self.button_stat = GPIO.input(self.ESC_BUTTON)
+
     def sensor_status(self) :
-        sensor_stat = [1, 1, 1];
+        sensor_stat = [1, 1, 1, 0];
         self.check_oscillation();
         self.check_flame();
         self.check_smoke();
+        self.check_button();
+
+        sensor_stat[0] = self.oscil_stat;
+        sensor_stat[1] = self.flame_stat;
+        sensor_stat[2] = self.smoke_stat;
+        sensor_stat[3] = self.button_stat;
+
         return sensor_stat;
 
+    def led_on(self) :
+        GPIO.output(self.ESC_LED, GPIO.HIGH);
+
+    def led_off(self) :
+        GPIO.output(self.ESC_LED, GPIO.LOW);
 
 class ESC_UI(object):
     def __init__(self):
@@ -141,6 +162,7 @@ class ESC_UI(object):
 
     def ble_stop(self):
         self.esc_ble.ble_broadcast("0");
+        self.led_off();
 
     def sensor_timer(self):
         sensor_stat = self.esc_gpio.sensor_status();
@@ -163,6 +185,8 @@ class ESC_UI(object):
 
         if sensor_stat[0]*sensor_stat[1]*sensor_stat[2] == 0:
             print("Warning!!!!");
+            if sensor_stat[3] == 1:
+                self.led_on();
         
         threading.Timer(1, self.sensor_timer).start();
 
