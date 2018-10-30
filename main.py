@@ -166,7 +166,7 @@ class ESC_UI(object):
         else:
             self.BLE4S.setStyleSheet("background-color: red;")
 
-        self.ble_go();
+        #self.ble_go();
     
     def ble_go(self):
         self.esc_ble.ble_broadcast("1");
@@ -199,6 +199,7 @@ class ESC_UI(object):
             self.esc_gpio.buzzer_on();
             if sensor_stat[3] == 1:
                 self.esc_gpio.led_on();
+                self.ble_go();
         else:
             self.esc_gpio.buzzer_off();
         
