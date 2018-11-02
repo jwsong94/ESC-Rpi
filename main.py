@@ -299,7 +299,7 @@ class ESC_UI(object):
 
     def retranslateUi(self, Frame):
         _translate = QtCore.QCoreApplication.translate
-        Frame.setWindowTitle(_translate("Frame", "Frame"))
+        Frame.setWindowTitle(_translate("Frame", "ESC Monitor"))
         self.SLabel.setText(_translate("Frame", "Sensors"))
         self.BButton.setText(_translate("Frame", "Refresh"))
         self.BLabel.setText(_translate("Frame", "BLE Conn"))
